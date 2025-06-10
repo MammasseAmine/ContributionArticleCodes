@@ -1,0 +1,78 @@
+English
+
+with Byt5_Tokinizer + No Preprocessing
+
+	Train Acc: 83.47% | Train F1: 0.820
+	Val. Acc: 85.06% | Val. F1: 0.842
+	Test Acc: 83.49% | Test F1: 0.823
+
+
+
+with Byt5_Tokinizer + Yes Preprocessing
+
+	Train Acc: 74.39% | Train F1: 0.746
+	Val. Acc: 74.99% | Val. F1: 0.752
+	Test Acc: 74.96% | Test F1: 0.760
+
+
+with mpnet_Tokinizer + No Preprocessing
+	
+	Train Acc: 90.32% | Train F1: 0.899
+	Val. Acc: 89.16% | Val. F1: 0.889
+	Test Acc: 89.01% | Test F1: 0.887
+
+
+with mpnet_Tokinizer + Yes Preprocessing
+	
+	Train Acc: 86.16% | Train F1: 0.855
+	Val. Acc: 86.86% | Val. F1: 0.864
+	Test Acc: 86.80% | Test F1: 0.864
+
+
+
+Arabic
+
+with Byt5_Tokinizer + No Preprocessing
+
+
+
+with Byt5_Tokinizer + Yes Preprocessing
+
+	Train Acc: 58.86% | Train F1: 0.203
+	Val. Acc: 58.80% | Val. F1: 0.216
+
+with mpnet_Tokinizer + No Preprocessing
+	
+	Train Acc: 75.07% | Train F1: 0.707
+	Val. Acc: 74.72% | Val. F1: 0.702
+	Test Acc: 75.11% | Test F1: 0.708
+
+
+with mpnet_Tokinizer + Yes Preprocessing
+
+	Train Acc: 61.11% | Train F1: 0.394
+	Val. Acc: 61.45% | Val. F1: 0.430
+	Test Acc: 60.92% | Test F1: 0.418
+
+
+
+English + Arabic ==> https://chat.deepseek.com/a/chat/s/a4be0ac1-2062-45bf-b01b-2f0dd2fc2c94
+
+with Byt5_Tokinizer + No Preprocessing
+
+
+
+with Byt5_Tokinizer + Yes Preprocessing
+
+
+
+with mpnet_Tokinizer + No Preprocessing
+	
+	Train Acc: 76.49% | Train F1: 0.730
+	Val. Acc: 76.44% | Val. F1: 0.728
+	Test Acc: 76.26% | Test F1: 0.724
+
+
+
+
+with mpnet_Tokinizer + Yes Preprocessing
