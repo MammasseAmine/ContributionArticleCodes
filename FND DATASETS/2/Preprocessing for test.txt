@@ -1,0 +1,83 @@
+import re
+import emoji
+import contractions
+from bs4 import BeautifulSoup
+from num2words import num2words
+import string
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+from gensim.parsing.preprocessing import STOPWORDS
+
+# Download NLTK stopwords if not already downloaded
+import nltk
+nltk.download('stopwords')
+
+def get_combined_stopwords():
+    """
+    Combine stop words from multiple Python libraries,
+    excluding negation words.
+
+    Returns:
+    set: A comprehensive set of English stop words
+    """
+    # Collect stop words from different sources
+    stopwords_sets = [
+        set(nltk.corpus.stopwords.words('english')),  # NLTK stopwords
+        ENGLISH_STOP_WORDS,  # scikit-learn stopwords
+        STOPWORDS,  # gensim stopwords
+        {'etc', 'via', 'eg', 'ie'}  # Manual additions
+    ]
+
+    # Combine all stop word sets
+    combined_stopwords = set()
+    for stopword_set in stopwords_sets:
+        combined_stopwords.update(stopword_set)
+
+    # Remove negation words
+    negation_words = {
+        'no', 'not', 'none', 'never', 'neither', 'nobody', 'nowhere',
+        'nothing', 'cannot', 'wont', 'no more', 'no less', 'nor',
+        'nope', 'nah', 'hardly', 'scarcely', 'barely'
+    }
+    combined_stopwords -= negation_words
+
+    return combined_stopwords
+
+def preprocess_sentence(sentence):
+    # Expand contractions
+    sentence = contractions.fix(sentence)
+    
+    # Convert to lowercase
+    sentence = sentence.lower()
+    
+    # Convert emojis to text
+    sentence = emoji.demojize(sentence)
+    
+    # Convert numbers to words
+    sentence = re.sub(r'\d+', lambda x: num2words(int(x.group())), sentence)
+    
+    # Remove HTML tags
+    soup = BeautifulSoup(sentence, 'html.parser')
+    sentence = soup.get_text()
+    
+    # Remove URLs
+    url_pattern = re.compile(r'https?://\S+|www.\S+')
+    sentence = url_pattern.sub('', sentence)
+    
+    # Remove email addresses
+    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+    sentence = re.sub(email_pattern, '', sentence)
+    
+    # Remove punctuation
+    sentence = sentence.translate(str.maketrans('', '', string.punctuation))
+    
+    # Remove stopwords
+    filtered_stopwords = get_combined_stopwords()
+    sentence = ' '.join([word for word in sentence.split() if word not in filtered_stopwords])
+    
+    return sentence
+
+# Example usage
+input_sentence = "This is a test sentence with numbers 123 and a URL https://example.com and an email test@example.com."
+preprocessed_sentence = preprocess_sentence(input_sentence)
+print(preprocessed_sentence)
