@@ -1,0 +1,81 @@
+# https://chat.deepseek.com/a/chat/s/8e68a6f7-f6d3-4f74-8687-5aded9278150
+import re
+import pyarabic.number
+from pyarabic.araby import strip_tashkeel, strip_diacritics, strip_tatweel
+import arabicstopwords.arabicstopwords as stp
+from nltk.corpus import stopwords
+from arabic_emojipedia.emoji_description import get_emoji_description
+import emoji
+
+def preprocess_arabic_text(text):
+    if not isinstance(text, str):
+        return text
+
+    # Normalize Arabic characters
+    text = re.sub("[إأآا]", "ا", text)
+    text = re.sub("ى", "ي", text)
+    text = re.sub("ؤ", "ء", text)
+    text = re.sub("ئ", "ء", text)
+    text = re.sub("ة", "ه", text)
+    text = re.sub("[\u064B-\u0652]", "", text)  # Remove diacritics
+
+    # Remove URLs and count them
+    url_pattern = re.compile(r'https?://\S+|www\.\S+')
+    text = url_pattern.sub('', text)
+
+    # Remove punctuation
+    text = re.sub(r'[^\w\s]', '', text)
+
+    # Remove diacritics, tatweel, and tashkeel
+    text = strip_tashkeel(text)
+    text = strip_diacritics(text)
+    text = strip_tatweel(text)
+
+    # Convert currency symbols to words
+    currency_map = {
+        '$': ' دولار',
+        '€': ' يورو',
+        '£': ' جنيه إسترليني',
+        '¥': ' ين',
+        '₽': ' روبل',
+        '₹': ' روبية',
+    }
+    for symbol, name in currency_map.items():
+        text = text.replace(symbol, name)
+
+    # Convert numbers to Arabic words
+    an = pyarabic.number.ArNumbers()
+    def replace_number(match):
+        number = match.group(1)
+        try:
+            return an.int2str(number)
+        except KeyError:
+            return number
+    text = re.sub(r'(\d+)(?=\s|$|\w)', replace_number, text)
+
+    # Remove newlines and extra spaces
+    text = text.replace('\n', ' ')
+    text = ' '.join(text.split())
+
+    # Replace emojis with descriptions
+    for char in text:
+        if emoji.is_emoji(char):
+            description = get_emoji_description(char)
+            text = text.replace(char, f" {description} ")
+
+    # Remove stopwords
+    arabic_stopwords_stp = stp.stopwords_list()
+    arabic_stopwords_nltk = stopwords.words("arabic")
+    combined_arabic_stopwords = set(arabic_stopwords_stp).union(set(arabic_stopwords_nltk))
+    unwanted_stopwords = {"لا", "ليس", "لم", "لن", "ما", "بلا", "بدون", "غير"}
+    my_stopwords = combined_arabic_stopwords - unwanted_stopwords
+    words = text.split()
+    filtered_words = [word for word in words if word.lower() not in my_stopwords or any(keep in word.lower() for keep in unwanted_stopwords)]
+    text = ' '.join(filtered_words)
+
+    # Keep only Arabic characters
+    arabic_pattern = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+')
+    arabic_words = arabic_pattern.findall(text)
+    text = ' '.join(arabic_words)
+
+    return text
