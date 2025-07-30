@@ -1,0 +1,145 @@
+import re
+import emoji
+import contractions
+from bs4 import BeautifulSoup
+from num2words import num2words
+import string
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+from gensim.parsing.preprocessing import STOPWORDS
+import pyarabic.number
+from pyarabic.araby import strip_tashkeel, strip_diacritics, strip_tatweel
+import arabicstopwords.arabicstopwords as stp
+from arabic_emojipedia.emoji_description import get_emoji_description
+import langdetect
+
+# Download NLTK stopwords if not already downloaded
+import nltk
+nltk.download('stopwords')
+
+def get_combined_stopwords():
+    """
+    Combine stop words from multiple Python libraries,
+    excluding negation words.
+
+    Returns:
+    set: A comprehensive set of English stop words
+    """
+    # Collect stop words from different sources
+    stopwords_sets = [
+        set(nltk.corpus.stopwords.words('english')),  # NLTK stopwords
+        ENGLISH_STOP_WORDS,  # scikit-learn stopwords
+        STOPWORDS,  # gensim stopwords
+        {'etc', 'via', 'eg', 'ie'}  # Manual additions
+    ]
+
+    # Combine all stop word sets
+    combined_stopwords = set()
+    for stopword_set in stopwords_sets:
+        combined_stopwords.update(stopword_set)
+
+    # Remove negation words
+    negation_words = {
+        'no', 'not', 'none', 'never', 'neither', 'nobody', 'nowhere',
+        'nothing', 'cannot', 'wont', 'no more', 'no less', 'nor',
+        'nope', 'nah', 'hardly', 'scarcely', 'barely'
+    }
+    combined_stopwords -= negation_words
+
+    return combined_stopwords
+
+def preprocess_text(text):
+    if not isinstance(text, str):
+        return text
+
+    # Detect language
+    try:
+        lang = langdetect.detect(text)
+    except:
+        lang = 'en'  # Default to English if detection fails
+
+    if lang == 'ar':
+        # Preprocess Arabic text
+        text = re.sub("[إأآا]", "ا", text)
+        text = re.sub("ى", "ي", text)
+        text = re.sub("ؤ", "ء", text)
+        text = re.sub("ئ", "ء", text)
+        text = re.sub("ة", "ه", text)
+        text = re.sub("[\u064B-\u0652]", "", text)  # Remove diacritics
+
+        # Remove URLs
+        url_pattern = re.compile(r'https?://\S+|www\.\S+')
+        text = url_pattern.sub('', text)
+
+        # Remove punctuation
+        text = re.sub(r'[^\w\s]', '', text)
+
+        # Remove diacritics, tatweel, and tashkeel
+        text = strip_tashkeel(text)
+        text = strip_diacritics(text)
+        text = strip_tatweel(text)
+
+        # Convert currency symbols to words
+        currency_map = {
+            '$': ' دولار',
+            '€': ' يورو',
+            '£': ' جنيه إسترليني',
+            '¥': ' ين',
+            '₽': ' روبل',
+            '₹': ' روبية',
+        }
+        for symbol, name in currency_map.items():
+            text = text.replace(symbol, name)
+
+        # Convert numbers to Arabic words
+        an = pyarabic.number.ArNumbers()
+        def replace_number(match):
+            number = match.group(1)
+            try:
+                return an.int2str(number)
+            except KeyError:
+                return number
+        text = re.sub(r'(\d+)(?=\s|$|\w)', replace_number, text)
+
+        # Remove newlines and extra spaces
+        text = text.replace('\n', ' ')
+        text = ' '.join(text.split())
+
+        # Replace emojis with descriptions
+        for char in text:
+            if emoji.is_emoji(char):
+                description = get_emoji_description(char)
+                text = text.replace(char, f" {description} ")
+
+        # Remove stopwords
+        arabic_stopwords_stp = stp.stopwords_list()
+        arabic_stopwords_nltk = stopwords.words("arabic")
+        combined_arabic_stopwords = set(arabic_stopwords_stp).union(set(arabic_stopwords_nltk))
+        unwanted_stopwords = {"لا", "ليس", "لم", "لن", "ما", "بلا", "بدون", "غير"}
+        my_stopwords = combined_arabic_stopwords - unwanted_stopwords
+        words = text.split()
+        filtered_words = [word for word in words if word.lower() not in my_stopwords or any(keep in word.lower() for keep in unwanted_stopwords)]
+        text = ' '.join(filtered_words)
+
+        # Keep only Arabic characters
+        arabic_pattern = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+')
+        arabic_words = arabic_pattern.findall(text)
+        text = ' '.join(arabic_words)
+
+    else:
+        # Preprocess English text
+        text = contractions.fix(text)
+        text = text.lower()
+        text = emoji.demojize(text)
+        text = re.sub(r'\d+', lambda x: num2words(int(x.group())), text)
+        soup = BeautifulSoup(text, 'html.parser')
+        text = soup.get_text()
+        url_pattern = re.compile(r'https?://\S+|www.\S+')
+        text = url_pattern.sub('', text)
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        text = re.sub(email_pattern, '', text)
+        text = text.translate(str.maketrans('', '', string.punctuation))
+        filtered_stopwords = get_combined_stopwords()
+        text = ' '.join([word for word in text.split() if word not in filtered_stopwords])
+
+    return text
